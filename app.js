@@ -1,9 +1,8 @@
 const express = require("express");
 const cors = require("cors");
-const { updateRatingsAndScores, populate} = require("./scrap");
+const { updateRatingsAndScores, fetchData} = require("./scrap");
 const cron = require("node-cron");
 const app = express();
-const users = require("./users.json");
 
 app.use(express.json());
 app.use(cors());
@@ -17,13 +16,9 @@ app.get("/", (req, res) => {
   });
 });
 
-app.get("/users", (req, res) => {
-  res.status(200).json(users)
-})
-
 // croning the updateRatingsAndScores function every 24 hours
 cron.schedule("0 0 * * *", async () => {
-  await populate();
+  await fetchData();
   await updateRatingsAndScores();
   console.log("updated scores and ratings");
 });
@@ -44,5 +39,7 @@ app.all("*", (req, res) => {
     msg: `Can't find ${req.originalUrl} on this server!`,
   });
 });
+
+// fetchData();
 
 module.exports = app;

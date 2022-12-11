@@ -1,7 +1,7 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
 const Micp = require("./models/micp");
-const users = require("./users").users;
+const {parse} = require('csv-parse');
 const getRating = async (username) => {
   const url = `https://www.codechef.com/users/${username}`;
   const response = await axios.get(url);
@@ -13,22 +13,25 @@ const getRating = async (username) => {
 
 // To populate the database with initial rating and score of new users
 
-const populate = async () => {
-  const promises = users.map(async (username) => {
-    const micp = await Micp.findOne({ username });
+const populate = async (dat) => {
+  let count = 0;
+  for(const user of dat) {
+    console.log(++count);
+    const id = user["ID"];
+    const micp = await Micp.findOne({ username:id });
     if (!micp) {
-      const rating = await getRating(username);
+      const rating = await getRating(id);
       if (rating !== false) {
         await Micp.create({
-          username,
+          username: id,
           score: 0,
           currentRating: rating,
           initialRating: rating,
+          name: user["Name"],
         });
       }
     }
-  });
-  await Promise.all(promises);
+  }
   console.log('All users added/updated')
 };
 
@@ -56,4 +59,25 @@ const updateRatingsAndScores = async () => {
   console.log("Ratings updated")
 };
 
-module.exports = { updateRatingsAndScores, populate}
+const fetchData = async () => {
+  const dat = []
+  const data = await axios.get("https://docs.google.com/spreadsheets/d/1E4fT40UVM8h1lZ83kNJT25QrOgrM9m7Z4COSAs6IUhE/gviz/tq?tqx=out:csv", {responseType: 'stream'})
+  data.data.pipe(
+      parse({
+        delimiter: ",",
+        columns: true,
+        ltrim: true,
+      })
+  ).on("data", function (row) {
+      dat.push(row);
+  }).on("error", function (error) {
+        console.log(error.message);
+  }).on("end", function () {
+        console.log("parsed csv data:");
+        // console.log(dat);
+        populate(dat)
+      });
+
+}
+
+module.exports = { updateRatingsAndScores, populate, fetchData }
