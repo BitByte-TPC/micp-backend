@@ -1,44 +1,28 @@
 const express = require("express");
-const morgan = require("morgan");
 const cors = require("cors");
 const { updateRatingsAndScores } = require("./scrap");
 const cron = require("node-cron");
 const app = express();
+const users = require("./users.json");
 
-//middlewares
-app.use(morgan("dev"));
-app.use(
-  express.urlencoded({
-    limit: "50mb",
-    extended: true,
-  })
-);
-
-app.enable("trust proxy");
-
-app.use(express.json({ limit: "50mb" }));
-app.use(
-  cors({
-    credentials: true,
-    origin: [
-      "http://localhost:3000",
-      "https://frontend-gamma-sage.vercel.app",
-      "https://lostandfoundiiitdmj.vercel.app",
-    ],
-  })
-);
+app.use(express.json());
+app.use(cors());
 
 app.get("/", (req, res) => {
   res.status(200).json({
     status: true,
-    msg: "working...",
-    user: req.user,
+    msg: "working..."
   });
 });
 
+app.get("/users", (req, res) => {
+  res.status(200).json(users)
+})
+
 // croning the updateRatingsAndScores function every 24 hours
-cron.schedule("0 0 0 * * *", () => {
-  updateRatingsAndScores();
+cron.schedule("0 0 * * *", async () => { 
+  await populate(); 
+  await updateRatingsAndScores();
   console.log("updated scores and ratings");
 });
 

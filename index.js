@@ -7,8 +7,7 @@ console.log(MONGO_DATABASE_DEV);
 //db
 mongoose.connect(MONGO_DATABASE_DEV, {
     useNewUrlParser: true, useUnifiedTopology: true
-})
-    .then(() => console.log('DB Connected...'))
+}).then(() => console.log('DB Connected...')).catch((err) => console.error(err))
 
 const port = process.env.PORT || 8000;
 app.listen(port, () => {

@@ -25,19 +25,19 @@ const populate = async () => {
           currentRating: rating,
           initialRating: rating,
         });
-        console.log(newMicp);
       }
     }
   });
   await Promise.all(promises);
+  console.log('All users added/updated')
 };
 
 // cron job to update the score of users every 24 hours
-
-exports.updateRatingsAndScores = async () => {
+const updateRatingsAndScores = async () => {
   const users = await Micp.find();
-  const promises = users.map(async (user) => {
+  const promises = users.map(async (user, i) => {
     const rating = await getRating(user.username);
+    console.log(i)
     if (rating > user.currentRating) {
       user.score += rating - user.currentRating;
       user.initialRating = user.currentRating;
@@ -53,6 +53,7 @@ exports.updateRatingsAndScores = async () => {
     }
   });
   await Promise.all(promises);
+  console.log("Ratings updated")
 };
 
-// populate();
+module.exports = { updateRatingsAndScores, populate}
