@@ -26,6 +26,15 @@ cron.schedule("0 0 * * *", async () => {
   console.log("updated scores and ratings");
 });
 
+// to ping the render server to stay alive
+cron.schedule('*/10 * * * *', async () => {
+  await axios.get('https://micp-backend.onrender.com/').then((response) => {
+     console.log(response.status, response.statusText);
+   }).catch((error) => {
+     console.log(error);
+   })
+ });
+
 // to handled unregister endpoint
 app.all("*", (req, res) => {
   res.status(404).json({
