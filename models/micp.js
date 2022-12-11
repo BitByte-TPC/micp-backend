@@ -21,12 +21,14 @@ const micpSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    name: {
+      type: String,
+    },
   },
   {
     collection: "micp",
   }
 );
 
-const Micp = mongoose.model("micp", micpSchema);
 
-module.exports = Micp;
+module.exports = mongoose.model("Micp", micpSchema);

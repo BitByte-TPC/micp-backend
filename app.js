@@ -1,12 +1,14 @@
 const express = require("express");
 const cors = require("cors");
-const { updateRatingsAndScores } = require("./scrap");
+const { updateRatingsAndScores, populate} = require("./scrap");
 const cron = require("node-cron");
 const app = express();
 const users = require("./users.json");
 
 app.use(express.json());
 app.use(cors());
+
+app.use("/api", require("./routers/micpRouter"));
 
 app.get("/", (req, res) => {
   res.status(200).json({
@@ -20,8 +22,8 @@ app.get("/users", (req, res) => {
 })
 
 // croning the updateRatingsAndScores function every 24 hours
-cron.schedule("0 0 * * *", async () => { 
-  await populate(); 
+cron.schedule("0 0 * * *", async () => {
+  await populate();
   await updateRatingsAndScores();
   console.log("updated scores and ratings");
 });

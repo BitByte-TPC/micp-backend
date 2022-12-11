@@ -1,6 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
-const Micp = require("./Modal/micp");
+const Micp = require("./models/micp");
 const users = require("./users").users;
 const getRating = async (username) => {
   const url = `https://www.codechef.com/users/${username}`;
@@ -19,7 +19,7 @@ const populate = async () => {
     if (!micp) {
       const rating = await getRating(username);
       if (rating !== false) {
-        const newMicp = await Micp.create({
+        await Micp.create({
           username,
           score: 0,
           currentRating: rating,

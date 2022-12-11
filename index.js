@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const app = require('./app');
 
 const {MONGO_DATABASE_DEV} = require("./config");
-console.log(MONGO_DATABASE_DEV);
 
 //db
 mongoose.connect(MONGO_DATABASE_DEV, {
