@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { updateRatingsAndScores, fetchData} = require("./scrap");
 const cron = require("node-cron");
+const axios = require("axios")
 const app = express();
 
 app.use(express.json());
