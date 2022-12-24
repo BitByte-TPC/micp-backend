@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const micpSchema = new mongoose.Schema(
   {
@@ -26,9 +26,8 @@ const micpSchema = new mongoose.Schema(
     },
   },
   {
-    collection: "micp",
-  }
+    collection: 'micp',
+  },
 );
 
-
-module.exports = mongoose.model("Micp", micpSchema);
+module.exports = mongoose.model('Micp', micpSchema);
