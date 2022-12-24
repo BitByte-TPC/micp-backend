@@ -81,18 +81,10 @@ const updateRatingsAndScores = async () => {
         const { user } = item;
         const $ = cheerio.load(item.response.data);
         const rating = parseInt($('.rating-number')?.text() || '0', 10);
-        if (rating > user.currentRating) {
-          user.score += rating - user.currentRating;
-          user.initialRating = user.currentRating;
-          user.currentRating = rating;
-          await user.save();
-        } else if (rating < user.currentRating) {
-          user.score -= user.currentRating - rating;
-          user.initialRating = user.currentRating;
-          user.currentRating = rating;
-          if (user.score < 0) user.score = 0;
-          await user.save();
-        }
+        user.score = rating - user.initialRating;
+        user.currentRating = rating;
+        if (user.score < 0) user.score = 0;
+        await user.save();
       });
     });
   } catch (err) {
