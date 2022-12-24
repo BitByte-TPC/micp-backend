@@ -26,6 +26,7 @@
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "mongoose": "^6.8.0",
+    "morgan": "^1.10.0",
     "node-cron": "^3.0.2",
     "nodecron": "^0.2.0"
   },
