@@ -18,7 +18,7 @@ exports.refreshRankList = async (req, res) => {
   const response = await axios.get(`https://micp.netlify.app/api/revalidate?secret=${process.env.REVALIDATE_TOKEN}`).catch((err) => {
     console.log(err.message);
   });
-  if (response?.revalidated) console.log('Cache updated');
+  if (response?.data?.revalidated) console.log('Cache updated');
   else console.log('Error occured while updating cache');
   res.status(200).json({
     status: true,

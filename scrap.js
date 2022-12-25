@@ -3,60 +3,74 @@ const cheerio = require('cheerio');
 const { parse } = require('csv-parse');
 const Micp = require('./models/micp');
 
-const getRating = async (username) => {
-  const url = `https://www.codechef.com/users/${username}`;
-  try {
-    const response = await axios.get(url);
-    const $ = cheerio.load(response.data);
-    const rating = $('.rating-number')?.text() || '';
-    if (rating === '') return false;
-    return parseInt(rating, 10);
-  } catch (err) {
-    console.log(err.message);
-    return false;
-  }
-};
-
 // To populate the database with initial rating and score of new users
 
 const populate = async (dat) => {
   let micpPromises = [];
+
   dat.forEach((user) => {
     const id = user.ID;
-    micpPromises.push(Micp.findOne({ username: id }).lean().exec());
-  });
+    let promise = new Promise(async (resolve, reject) => {
+      const response = await Micp.findOne({ username: id })
+      resolve({user, response})
+    })
+    micpPromises.push(promise);
+  })
 
-  micpPromises = await Promise.all(micpPromises);
   let ratingPromises = [];
-  const filteredUsers = [];
-  for (let i = 0; i < micpPromises.length; i++) {
-    if (micpPromises[i] === null) {
-      const user = dat[i];
-      filteredUsers.push(user);
-      const id = user.ID;
-      ratingPromises.push(getRating(id));
-    }
-  }
-  ratingPromises = await Promise.all(ratingPromises);
+  await Promise.all(micpPromises).then((data) => {
+    data.forEach((item) => {
+      const { response, user } = item;
+      if(response === null){
+        const url = `https://www.codechef.com/users/${user.ID}`;
+        let promise = new Promise(async (resolve, reject) => {
+          let response = await axios.get(url);
+          resolve({
+            user,
+            response,
+          });
+        })
+        ratingPromises.push(promise)
+      }
+    })
+  })
 
-  const promises = [];
-  for (let i = 0; i < filteredUsers.length; i++) {
-    const user = filteredUsers[i];
-    const id = user.ID;
-    const name = user.Name;
-    const rating = ratingPromises[i];
-    if (rating) {
-      const newUser = new Micp({
-        username: id,
-        name,
-        currentRating: rating,
-        initialRating: rating,
-        score: 0,
-      });
-      promises.push(newUser.save());
-    }
-  }
-  await Promise.all(promises);
+  let newUsersPromises = [];
+  await Promise.all(ratingPromises).then((data) => {
+    data.forEach((item) => {
+      const { user, response } = item;
+      try{
+        const $ = cheerio.load(response.data);
+        const rating = parseInt($('.rating-number')?.text() || '0');
+        
+        const newUser = new Micp({
+          username: user.ID,
+          name: user.Name,
+          currentRating: rating,
+          initialRating: rating,
+          score: 0,
+        });
+        let promise = new Promise(async (resolve, reject) => {
+          try{
+            let response = await newUser.save()
+            resolve("Done")
+          }catch(err){
+            console.log(err)
+            reject("Error saving user")
+          }
+        })
+        newUsersPromises.push(promise)
+      
+      }catch(err){
+        console.log("Username is invalid")
+        console.log(err.message);
+      }
+    })
+  })
+
+  await Promise.all(newUsersPromises).then((messages) => {}).catch((err) => {
+    console.log(err)
+  })
   console.log('Data populated');
 };
 
