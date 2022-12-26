@@ -15,11 +15,12 @@ exports.getRankList = async (req, res) => {
 exports.refreshRankList = async (req, res) => {
   await fetchData();
   await updateRatingsAndScores();
-  const response = await axios.get(`https://micp.netlify.app/api/revalidate?secret=${process.env.REVALIDATE_TOKEN}`).catch((err) => {
-    console.log(err.message);
-  });
-  if (response?.revalidated) console.log('Cache updated');
-  else console.log('Error occured while updating cache');
+  try {
+    await axios.post(process.env.HOOK_URL);
+    console.log('build triggered');
+  } catch (err) {
+    console.log(err);
+  }
   res.status(200).json({
     status: true,
     message: 'Refreshed',
