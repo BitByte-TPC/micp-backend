@@ -6,43 +6,43 @@ const Micp = require('./models/micp');
 // To populate the database with initial rating and score of new users
 
 const populate = async (dat) => {
-  let micpPromises = [];
+  const micpPromises = [];
 
   dat.forEach((user) => {
     const id = user.ID;
-    let promise = new Promise(async (resolve, reject) => {
-      const response = await Micp.findOne({ username: id })
-      resolve({user, response})
-    })
+    const promise = new Promise(async (resolve, reject) => {
+      const response = await Micp.findOne({ username: id });
+      resolve({ user, response });
+    });
     micpPromises.push(promise);
-  })
+  });
 
-  let ratingPromises = [];
+  const ratingPromises = [];
   await Promise.all(micpPromises).then((data) => {
     data.forEach((item) => {
       const { response, user } = item;
-      if(response === null){
+      if (response === null) {
         const url = `https://www.codechef.com/users/${user.ID}`;
-        let promise = new Promise(async (resolve, reject) => {
-          let response = await axios.get(url);
+        const promise = new Promise(async (resolve, reject) => {
+          const resp = await axios.get(url);
           resolve({
             user,
-            response,
+            response: resp,
           });
-        })
-        ratingPromises.push(promise)
+        });
+        ratingPromises.push(promise);
       }
-    })
-  })
+    });
+  });
 
-  let newUsersPromises = [];
+  const newUsersPromises = [];
   await Promise.all(ratingPromises).then((data) => {
     data.forEach((item) => {
       const { user, response } = item;
-      try{
+      try {
         const $ = cheerio.load(response.data);
-        const rating = parseInt($('.rating-number')?.text() || '0');
-        
+        const rating = parseInt($('.rating-number')?.text() || '0', 10);
+
         const newUser = new Micp({
           username: user.ID,
           name: user.Name,
@@ -50,27 +50,26 @@ const populate = async (dat) => {
           initialRating: rating,
           score: 0,
         });
-        let promise = new Promise(async (resolve, reject) => {
-          try{
-            let response = await newUser.save()
-            resolve("Done")
-          }catch(err){
-            console.log(err)
-            reject("Error saving user")
+        const promise = new Promise(async (resolve, reject) => {
+          try {
+            await newUser.save();
+            resolve('Done');
+          } catch (err) {
+            console.log(err);
+            reject(Error('Error saving user'));
           }
-        })
-        newUsersPromises.push(promise)
-      
-      }catch(err){
-        console.log("Username is invalid")
+        });
+        newUsersPromises.push(promise);
+      } catch (err) {
+        console.log('Username is invalid');
         console.log(err.message);
       }
-    })
-  })
+    });
+  });
 
-  await Promise.all(newUsersPromises).then((messages) => {}).catch((err) => {
-    console.log(err)
-  })
+  await Promise.all(newUsersPromises).then(() => {}).catch((err) => {
+    console.log(err);
+  });
   console.log('Data populated');
 };
 

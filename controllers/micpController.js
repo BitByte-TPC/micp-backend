@@ -15,15 +15,12 @@ exports.getRankList = async (req, res) => {
 exports.refreshRankList = async (req, res) => {
   await fetchData();
   await updateRatingsAndScores();
-  try{
-   await axios.post(process.env.HOOK_URL).then((response) => {
-    console.log("Build Started for frontend")
-  }).catch((err) => {
-    console.log(err.message);
-  });
-}catch(err){
-  console.log(err)
-}
+  try {
+    await axios.post(process.env.HOOK_URL);
+    console.log('build triggered');
+  } catch (err) {
+    console.log(err);
+  }
   res.status(200).json({
     status: true,
     message: 'Refreshed',
