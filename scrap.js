@@ -9,7 +9,8 @@ const populate = async (dat) => {
   const micpPromises = [];
 
   dat.forEach((user) => {
-    const id = user.ID;
+    const id = user['Codechef Username (Only username, not the link and no stars)'];
+    // console.log(id);
     const promise = new Promise(async (resolve, reject) => {
       const response = await Micp.findOne({ username: id });
       resolve({ user, response });
@@ -22,7 +23,7 @@ const populate = async (dat) => {
     data.forEach((item) => {
       const { response, user } = item;
       if (response === null) {
-        const url = `https://www.codechef.com/users/${user.ID}`;
+        const url = `https://www.codechef.com/users/${user['Codechef Username (Only username, not the link and no stars)']}`;
         const promise = new Promise(async (resolve, reject) => {
           const resp = await axios.get(url);
           resolve({
@@ -44,7 +45,7 @@ const populate = async (dat) => {
         const rating = parseInt($('.rating-number')?.text() || '0', 10);
 
         const newUser = new Micp({
-          username: user.ID,
+          username: user['Codechef Username (Only username, not the link and no stars)'],
           name: user.Name,
           currentRating: rating,
           initialRating: rating,
