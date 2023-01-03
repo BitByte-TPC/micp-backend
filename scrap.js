@@ -3,8 +3,40 @@ const cheerio = require('cheerio');
 const { parse } = require('csv-parse');
 const Micp = require('./models/micp');
 
-// To populate the database with initial rating and score of new users
+// Function to get the CodeChef rating for a user
+const getCodeChefRating = async (codeChefId) => {
+  const response = await axios.get(`https://www.codechef.com/users/${codeChefId}`);
+  const $ = cheerio.load(response.data);
+  const rating = parseInt($('.rating-number')?.text() || '0', 10);
+  return rating;
+};
 
+// Function to get the CodeForces rating for a user
+const getCodeForcesRating = async (codeForcesId) => {
+  const response = await axios.get(`https://codeforces.com/api/user.info?handles=${codeForcesId}`);
+  const rating = response.data.result[0].rating;
+  return rating;
+};
+
+const getNormalizedRating = async (codeChefId, codeForcesId) => {
+  let codeChefRating = 0;
+  let codeForcesRating = 0;
+  try {
+    codeChefRating = await getCodeChefRating(codeChefId);
+  } catch (err) {
+    console.log(err);
+  }
+  try {
+    codeForcesRating = await getCodeForcesRating(codeForcesId);
+  } catch (err) {
+    console.log(err);
+  }
+  // Normalize the CodeChef rating by multiplying it by 0.8315
+  codeChefRating = codeChefRating * 0.8315620555789324;
+  return Math.max(codeChefRating, codeForcesRating);
+};
+
+// To populate the database with initial rating and score of new users
 const populate = async (dat) => {
   const micpPromises = [];
 
