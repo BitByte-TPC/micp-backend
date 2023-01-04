@@ -13,12 +13,13 @@ const getCodeChefRating = async (codeChefId) => {
 
 // Function to get the CodeForces rating of a user
 const getCodeForcesRating = async (codeForcesId) => {
-  const response = await axios.get(`https://codeforces.com/api/user.info?handles=${codeForcesId}`);
-  const rating = response.data.result[0].rating;
+  const response = await axios.get(`https://codeforces.com/profile/${codeForcesId}`);
+  const $ = cheerio.load(response.data);
+  const rating = $('#pageContent div.info li span').first().text();
   return rating;
 };
 
-const getScore = async (ccInitial, ccCurrent, cfInitial, cfCurrent) => {
+const getScore = (ccInitial, ccCurrent, cfInitial, cfCurrent) => {
   const deltaCC = (ccCurrent - ccInitial)*0.8315620555789324;
   const deltaCF = cfCurrent - cfInitial;
   // Normalize the CodeChef rating by multiplying it by 0.8315
@@ -28,7 +29,6 @@ const getScore = async (ccInitial, ccCurrent, cfInitial, cfCurrent) => {
 // To populate the database with initial rating and score of new users
 const populate = async (dat) => {
   const micpPromises = [];
-
   dat.forEach((user) => {
     const email = user['Email Address']
     const promise = new Promise(async (resolve, reject) => {
@@ -41,16 +41,19 @@ const populate = async (dat) => {
   const ratingPromises = [];
   await Promise.allSettled(micpPromises).then((data) => {
     data.forEach((item) => {
-      const { response, user } = item;
+      // console.log(item)
+      const { response, user } = item.value;
       if (response === null) {
         const codeChefId = user['Codechef Username (Only username, not the link and no stars)'];
         const codeForcesId = user['Codeforces Username (Only username, not the link)'];
+        // console.log(codeChefId, codeForcesId)
         const promise = new Promise(async (resolve, reject) => {
           try {
             const ccInitialRating = await getCodeChefRating(codeChefId);
             const cfInitialRating = await getCodeForcesRating(codeForcesId);
+            // console.log(user)
             resolve({
-              user,
+              user: user,
               codeChefId: codeChefId,
               codeForcesId: codeForcesId,
               ccInitialRating: ccInitialRating,
@@ -65,18 +68,22 @@ const populate = async (dat) => {
       }
     })
   })
+  // console.log(ratingPromises)
   const newUsersPromises = [];
   await Promise.allSettled(ratingPromises).then((data) => {
     data.forEach((item) => {
+      // console.log(item)
       const {
         user,
         codeChefId,
         codeForcesId,
         ccInitialRating,
         cfInitialRating,
-      } = item;
+      } = item.value;
+      // console.log(user)
+
       const newUser = new Micp({
-        email: user.email,
+        email: user['Email Address'],
         codeChefId: codeChefId,
         codeForcesId: codeForcesId,
         ccCurrentRating: ccInitialRating,
@@ -98,6 +105,7 @@ const populate = async (dat) => {
       newUsersPromises.push(promise);
     });
   });
+  // console.log(newUsersPromises)
 
   await Promise.all(newUsersPromises)
     .then(() => {})
@@ -117,8 +125,8 @@ const updateRatingsAndScores = async () => {
         try {
           // Get the normalized score for the user
           user.ccCurrentRating = await getCodeChefRating(user.codeChefId)
-          user.cfCurrentRating = await getCodeChefRating(user.codeForcesId)
-          const score = getScore(user.ccInitialRating, user.ccCurrentRating, user.cfInitialRating, user.cfCurrentRating)
+          user.cfCurrentRating = await getCodeForcesRating(user.codeForcesId)
+          const score = getScore(user.ccInitialRating, user.ccCurrentRating , user.cfInitialRating, user.cfCurrentRating)
           user.score = score
           await user.save();
           resolve('Done');
