@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const micpSchema = new mongoose.Schema(
   {
-    Email: {
+    email: {
       type: String,
       required: true,
       unique: true,
@@ -35,7 +35,7 @@ const micpSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    cfCurrentRating: {
+    cfInitialRating: {
       type: 0,
       default: 0,
     },
