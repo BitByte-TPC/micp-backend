@@ -3,7 +3,7 @@ const cheerio = require('cheerio');
 const { parse } = require('csv-parse');
 const Micp = require('./models/micp');
 
-// Function to get the CodeChef rating for a user
+// Function to get the CodeChef rating of a user
 const getCodeChefRating = async (codeChefId) => {
   const response = await axios.get(`https://www.codechef.com/users/${codeChefId}`);
   const $ = cheerio.load(response.data);
@@ -11,29 +11,18 @@ const getCodeChefRating = async (codeChefId) => {
   return rating;
 };
 
-// Function to get the CodeForces rating for a user
+// Function to get the CodeForces rating of a user
 const getCodeForcesRating = async (codeForcesId) => {
   const response = await axios.get(`https://codeforces.com/api/user.info?handles=${codeForcesId}`);
   const rating = response.data.result[0].rating;
   return rating;
 };
 
-const getNormalizedRating = async (codeChefId, codeForcesId) => {
-  let codeChefRating = 0;
-  let codeForcesRating = 0;
-  try {
-    codeChefRating = await getCodeChefRating(codeChefId);
-  } catch (err) {
-    console.log(err);
-  }
-  try {
-    codeForcesRating = await getCodeForcesRating(codeForcesId);
-  } catch (err) {
-    console.log(err);
-  }
+const getScore = async (ccInitial, ccCurrent, cfInitial, cfCurrent) => {
+  const deltaCC = (ccCurrent - ccInitial)*0.8315620555789324;
+  const deltaCF = cfCurrent - cfInitial;
   // Normalize the CodeChef rating by multiplying it by 0.8315
-  codeChefRating = codeChefRating * 0.8315620555789324;
-  return Math.max(codeChefRating, codeForcesRating);
+  return Math.max(deltaCC, deltaCF);
 };
 
 // To populate the database with initial rating and score of new users
@@ -41,69 +30,81 @@ const populate = async (dat) => {
   const micpPromises = [];
 
   dat.forEach((user) => {
-    const id = user['Codechef Username (Only username, not the link and no stars)'];
-    // console.log(id);
+    const email = user['Email Address']
     const promise = new Promise(async (resolve, reject) => {
-      const response = await Micp.findOne({ username: id });
+      const response = await Micp.findOne({ email: email });
       resolve({ user, response });
     });
     micpPromises.push(promise);
   });
 
   const ratingPromises = [];
-  await Promise.all(micpPromises).then((data) => {
+  await Promise.allSettled(micpPromises).then((data) => {
     data.forEach((item) => {
       const { response, user } = item;
       if (response === null) {
-        const url = `https://www.codechef.com/users/${user['Codechef Username (Only username, not the link and no stars)']}`;
-        const promise = new Promise(async (resolve, reject) => {
-          const resp = await axios.get(url);
-          resolve({
-            user,
-            response: resp,
-          });
-        });
-        ratingPromises.push(promise);
-      }
-    });
-  });
-
-  const newUsersPromises = [];
-  await Promise.all(ratingPromises).then((data) => {
-    data.forEach((item) => {
-      const { user, response } = item;
-      try {
-        const $ = cheerio.load(response.data);
-        const rating = parseInt($('.rating-number')?.text() || '0', 10);
-
-        const newUser = new Micp({
-          username: user['Codechef Username (Only username, not the link and no stars)'],
-          name: user.Name,
-          currentRating: rating,
-          initialRating: rating,
-          score: 0,
-        });
+        const codeChefId = user['Codechef Username (Only username, not the link and no stars)'];
+        const codeForcesId = user['Codeforces Username (Only username, not the link)'];
         const promise = new Promise(async (resolve, reject) => {
           try {
-            await newUser.save();
-            resolve('Done');
+            const ccInitialRating = await getCodeChefRating(codeChefId);
+            const cfInitialRating = await getCodeForcesRating(codeForcesId);
+            resolve({
+              user,
+              codeChefId: codeChefId,
+              codeForcesId: codeForcesId,
+              ccInitialRating: ccInitialRating,
+              cfInitialRating: cfInitialRating,
+            });
           } catch (err) {
             console.log(err);
-            reject(Error('Error saving user'));
+            reject(Error('Error getting rating'));
           }
         });
-        newUsersPromises.push(promise);
-      } catch (err) {
-        console.log('Username is invalid');
-        console.log(err.message);
+        ratingPromises.push(promise)
       }
+    })
+  })
+  const newUsersPromises = [];
+  await Promise.allSettled(ratingPromises).then((data) => {
+    data.forEach((item) => {
+      const {
+        user,
+        codeChefId,
+        codeForcesId,
+        ccInitialRating,
+        cfInitialRating,
+      } = item;
+      const newUser = new Micp({
+        email: user.email,
+        codeChefId: codeChefId,
+        codeForcesId: codeForcesId,
+        ccCurrentRating: ccInitialRating,
+        ccInitialRating: ccInitialRating,
+        cfCurrentRating: cfInitialRating,
+        cfInitialRating: cfInitialRating,
+        score: 0,
+        name: user.Name,
+      });
+      const promise = new Promise(async (resolve, reject) => {
+        try {
+          await newUser.save();
+          resolve("Done");
+        } catch (err) {
+          console.log(err);
+          reject(Error("Error saving user"));
+        }
+      });
+      newUsersPromises.push(promise);
     });
   });
 
-  await Promise.all(newUsersPromises).then(() => {}).catch((err) => {
-    console.log(err);
-  });
-  console.log('Data populated');
+  await Promise.all(newUsersPromises)
+    .then(() => {})
+    .catch((err) => {
+      console.log(err);
+    });
+  console.log("Data populated");
 };
 
 // cron job to update the score of users every 24 hours
@@ -112,31 +113,30 @@ const updateRatingsAndScores = async () => {
   const promises = [];
   try {
     users.forEach((user) => {
-      const url = `https://www.codechef.com/users/${user.username}`;
-      const promise = new Promise(async (resolve) => {
-        const response = await axios.get(url);
-        resolve({
-          user,
-          response,
-        });
+      const promise = new Promise(async (resolve, reject) => {
+        try {
+          // Get the normalized score for the user
+          user.ccCurrentRating = await getCodeChefRating(user.codeChefId)
+          user.cfCurrentRating = await getCodeChefRating(user.codeForcesId)
+          const score = getScore(user.ccInitialRating, user.ccCurrentRating, user.cfInitialRating, user.cfCurrentRating)
+          user.score = score
+          await user.save();
+          resolve('Done');
+        } catch (err) {
+          console.log(err);
+          reject(Error('Error updating rating'));
+        }
       });
       promises.push(promise);
     });
-    await Promise.all(promises).then((data) => {
-      data.forEach(async (item) => {
-        const { user } = item;
-        const $ = cheerio.load(item.response.data);
-        const rating = parseInt($('.rating-number')?.text() || '0', 10);
-        user.score = rating - user.initialRating;
-        user.currentRating = rating;
-        if (user.score < 0) user.score = 0;
-        await user.save();
-      });
-    });
   } catch (err) {
-    console.log(err.status);
+    console.log(err);
   }
-  console.log('Ratings updated');
+  await Promise.allSettled(promises).then(() => {
+    console.log('Ratings updated');
+  }).catch((err) => {
+    console.log(err);
+  });
 };
 
 const fetchData = async () => {
