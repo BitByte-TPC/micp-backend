@@ -61,7 +61,7 @@ const populate = async (dat) => {
             });
           } catch (err) {
             console.log(err);
-            reject(Error('Error getting rating'));
+            reject("Error in getting rating")
           }
         });
         ratingPromises.push(promise)
@@ -72,37 +72,41 @@ const populate = async (dat) => {
   const newUsersPromises = [];
   await Promise.allSettled(ratingPromises).then((data) => {
     data.forEach((item) => {
-      // console.log(item)
-      const {
-        user,
-        codeChefId,
-        codeForcesId,
-        ccInitialRating,
-        cfInitialRating,
-      } = item.value;
-      // console.log(user)
+      // console.log(item) 
+      try{
+        const {
+          user,
+          codeChefId,
+          codeForcesId,
+          ccInitialRating,
+          cfInitialRating,
+        } = item.value;
+        // console.log(user)
 
-      const newUser = new Micp({
-        email: user['Email Address'],
-        codeChefId: codeChefId,
-        codeForcesId: codeForcesId,
-        ccCurrentRating: ccInitialRating,
-        ccInitialRating: ccInitialRating,
-        cfCurrentRating: cfInitialRating,
-        cfInitialRating: cfInitialRating,
-        score: 0,
-        name: user.Name,
-      });
-      const promise = new Promise(async (resolve, reject) => {
-        try {
-          await newUser.save();
-          resolve("Done");
-        } catch (err) {
-          console.log(err);
-          reject(Error("Error saving user"));
-        }
-      });
-      newUsersPromises.push(promise);
+        const newUser = new Micp({
+          email: user['Email Address'],
+          codeChefId: codeChefId,
+          codeForcesId: codeForcesId,
+          ccCurrentRating: ccInitialRating,
+          ccInitialRating: ccInitialRating,
+          cfCurrentRating: cfInitialRating,
+          cfInitialRating: cfInitialRating,
+          score: 0,
+          name: user.Name,
+        });
+        const promise = new Promise(async (resolve, reject) => {
+          try {
+            await newUser.save();
+            resolve("Done");
+          } catch (err) {
+            console.log(err);
+            reject(Error("Error saving user"));
+          }
+        });
+        newUsersPromises.push(promise);
+      }catch(err){
+        console.log(err)
+      }
     });
   });
   // console.log(newUsersPromises)
