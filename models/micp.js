@@ -36,7 +36,7 @@ const micpSchema = new mongoose.Schema(
       default: 0,
     },
     cfInitialRating: {
-      type: 0,
+      type: Number,
       default: 0,
     },
     score: {
